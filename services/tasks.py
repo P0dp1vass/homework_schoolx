@@ -1,64 +1,29 @@
-from schemas.tasks import BaseTask, CreateTask, EditTask
-
-tasks = []
+from fastapi import Depends
+from repositories.tasks import TaskRepository
+from schemas.tasks import TaskCreateSchema, TaskUpdateSchema
+from core.exceptions import TaskNotFoundException
 
 class TaskService:
-    def __init__(self):
-        self.user_tasks = tasks
-    
-    def add_task(self, new_task: CreateTask):
-        for task in self.user_tasks:
-            if task.name == new_task.name:
-                return {
-                    "status": "task creation failed",
-                    "reason": "task with this name already exists"
-                }
-            if task.description == new_task.description:
-                return {
-                    "status": "task creation failed",
-                    "reason": "task with this description already exists"
-                }
-        self.user_tasks.append(new_task)
-        return BaseTask(**new_task.model_dump())
-    
-    def get_all_tasks(self):
-        print(tasks)
-        return [BaseTask(**task.model_dump()) for task in self.user_tasks]
+    def __init__(self, repository: TaskRepository = Depends()):
+        self.repo = repository
 
-    def delete_task(self, task_name: str):
-        for index, task in enumerate(self.user_tasks):
-            if task.name == task_name:
-                self.user_tasks.pop(index)
-                return {
-                    "status": "task deleted"
-                }
-        return {
-            "status": "task deletion failed",
-            "reason": "task not found"
-        }
+    def get_all_tasks(self, user_id: int):
+        return self.repo.get_all(user_id=user_id)
 
-    def edit_task(self, task_name: str, edited_task: EditTask):
-        task_to_edit_index = None
-        for index, task in enumerate(self.user_tasks):
-            if task.name == task_name:
-                task_to_edit_index = index
-                continue
-            if task.name == edited_task.name:
-                return {
-                    "status": "task editing failed",
-                    "reason": "task with this name already exists"
-                }
-            if task.description == edited_task.description:
-                return {
-                    "status": "task editing failed",
-                    "reason": "task with this description already exists"
-                }
-        if task_to_edit_index is None:
-            return {
-                "status": "task editing failed",
-                "reason": "task not found"
-            }
-        current_task = self.user_tasks[task_to_edit_index]
-        updated_task = current_task.model_copy(update=edited_task.model_dump())
-        self.user_tasks[task_to_edit_index] = updated_task
-        return BaseTask(**updated_task.model_dump())
+    def get_task(self, task_id: int, user_id: int):
+        task = self.repo.get_by_id(task_id=task_id, user_id=user_id)
+        if not task:
+            raise TaskNotFoundException(task_id=task_id)
+        return task
+
+    def create_task(self, task: TaskCreateSchema, user_id: int):
+        return self.repo.create(task=task, user_id=user_id)
+
+    def update_task(self, task_id: int, task_update: TaskUpdateSchema, user_id: int):
+        task = self.get_task(task_id, user_id)
+        return self.repo.update(db_task=task, task_update=task_update)
+
+    def delete_task(self, task_id: int, user_id: int):
+        task = self.get_task(task_id, user_id)
+        self.repo.delete(db_task=task)
+        return {"status": "task deleted"}

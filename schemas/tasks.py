@@ -1,15 +1,22 @@
-from typing import Literal
-
 from pydantic import BaseModel, Field
 
-class BaseTask(BaseModel):
-    name: str = Field(min_length=2, max_length=14)
-    priority: Literal["low", "middle", "high"]
-    description: str
-    
-class CreateTask(BaseTask):
-    responsible: str
-    deadline: str
-    
-class EditTask(BaseTask):
-    description: str
+class TaskBaseSchema(BaseModel):
+    title: str = Field(min_length=3, max_length=100, description="Task title must be between 3 and 100 characters")
+    description: str | None = Field(default=None, max_length=500)
+    is_completed: bool = False
+
+class TaskCreateSchema(TaskBaseSchema):
+    pass
+
+class TaskUpdateSchema(BaseModel):
+    title: str | None = Field(default=None, min_length=3, max_length=100)
+    description: str | None = Field(default=None, max_length=500)
+    is_completed: bool | None = None
+
+class TaskResponseSchema(TaskBaseSchema):
+    id: int
+    owner_id: int
+
+    class Config:
+        from_attributes = True
+
