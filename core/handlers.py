@@ -7,8 +7,6 @@ from typing import Dict
 import traceback
 
 def register_exception_handlers(app: FastAPI):
-    """Регистрирует все обработчики исключений"""
-
     @app.exception_handler(AppException)
     async def app_exception_handler(request: Request, exc: AppException):
         return JSONResponse(
@@ -49,7 +47,7 @@ def register_exception_handlers(app: FastAPI):
             content={
                 "error": {
                     "code": ErrorCode.USER_ALREADY_EXISTS.value,
-                    "message": "Ресурс с такими данными уже существует",
+                    "message": "Resource with such data already exists",
                     "field": field,
                     "details": {"constraint": error_msg}
                 }
@@ -69,7 +67,7 @@ def register_exception_handlers(app: FastAPI):
             content={
                 "error": {
                     "code": ErrorCode.INTERNAL_SERVER_ERROR.value,
-                    "message": "Внутренняя ошибка сервера",
+                    "message": "Internal server error",
                     "field": None,
                     "details": traceback.format_exc()
                 }

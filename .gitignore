@@ -5,3 +5,17 @@ dist/
 wheels/
 *.egg-info
 .venv
+# Environments
+venv/
+.env
+
+# Logs and databases
+*.log
+uvicorn.log
+sql_app.db
+*.sqlite3
+
+# Test data & Cache
+.coverage
+.pytest_cache/
+test_flow.py

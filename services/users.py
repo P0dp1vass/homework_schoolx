@@ -24,7 +24,7 @@ class UserService:
             raise AppException(
                 status_code=401,
                 error_code=ErrorCode.INVALID_CREDENTIALS,
-                message="Не верные данные для входа"
+                message="Not valid credentials"
             )
         
         access_token = create_access_token(data={"sub": user.email})

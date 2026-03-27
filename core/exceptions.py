@@ -3,21 +3,17 @@ from enum import Enum
 from typing import Optional, Dict, Any
 
 class ErrorCode(Enum):
-    """Коды всех возможных ошибок в приложении"""
-    # Задачи
     TASK_NOT_FOUND = "TASK_NOT_FOUND"
+    COMMENT_NOT_FOUND = "COMMENT_NOT_FOUND"
 
-    # Пользователи
     USER_NOT_FOUND = "USER_NOT_FOUND"
     USER_ALREADY_EXISTS = "USER_ALREADY_EXISTS"
     INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
 
-    # Общие
     VALIDATION_ERROR = "VALIDATION_ERROR"
     INTERNAL_SERVER_ERROR = "INTERNAL_SERVER_ERROR"
 
 class AppException(HTTPException):
-    """Базовый класс для всех кастомных исключений"""
     def __init__(
             self,
             status_code: int,
@@ -41,8 +37,17 @@ class TaskNotFoundException(AppException):
         super().__init__(
             status_code=404,
             error_code=ErrorCode.TASK_NOT_FOUND,
-            message=f"Задача с идентификатором {task_id} не найдена",
+            message=f"Task with ID {task_id} not found",
             details={"task_id": task_id}
+        )
+
+class CommentNotFoundException(AppException):
+    def __init__(self, comment_id: int):
+        super().__init__(
+            status_code=404,
+            error_code=ErrorCode.COMMENT_NOT_FOUND,
+            message=f"Comment with ID {comment_id} not found",
+            details={"comment_id": comment_id}
         )
 
 class UserNotFoundException(AppException):
@@ -50,7 +55,7 @@ class UserNotFoundException(AppException):
         super().__init__(
             status_code=404,
             error_code=ErrorCode.USER_NOT_FOUND,
-            message=f"Пользователь {email} не найден",
+            message=f"User with email {email} not found",
             details={"email": email}
         )
 
@@ -59,7 +64,7 @@ class UserAlreadyExistsException(AppException):
         super().__init__(
             status_code=400,
             error_code=ErrorCode.USER_ALREADY_EXISTS,
-            message=f"Пользователь с {field} '{value}' уже существует",
+            message=f"User with {field} '{value}' already exists",
             field=field,
             details={field: value}
         )
