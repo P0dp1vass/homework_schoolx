@@ -1,78 +1,48 @@
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from main import app
+import pytest_asyncio
+from httpx import AsyncClient, ASGITransport
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base
 from core.database import Base, get_db
+from models import User, Task
+from main import app
 
-# Важно импортировать модели до вызова Base.metadata.create_all()
-import models.users
-import models.tasks
-import models.comments
+SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
-# Используем in-memory базу SQLite для быстрых, изолированных тестов
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=False)
+TestingSessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-    echo=True,  # Включаем логирование всех SQL-запросов
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+@pytest_asyncio.fixture(scope="session")
+async def db_engine():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield engine
+    async with engine.begin() as conn:
+        # await conn.run_sync(Base.metadata.drop_all)
+        pass
 
-@pytest.fixture(scope="function")
-def db_session():
-    # Создаём таблицы
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        # Очищаем базу после каждого теста, чтобы они не зависели друг от друга
-        Base.metadata.drop_all(bind=engine)
+@pytest_asyncio.fixture
+async def db(db_engine):
+    async with TestingSessionLocal() as session:
+        yield session
 
-@pytest.fixture(scope="function")
-def client(db_session):
-    # Подменяем зависимость вызова базы данных
-    def override_get_db():
-        try:
-            yield db_session
-        finally:
-            pass
-            
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as c:
-        yield c
-    # Сбрасываем подмену после теста
+@pytest_asyncio.fixture
+async def client(db):
+    app.dependency_overrides[get_db] = lambda: db
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
     app.dependency_overrides.clear()
 
-@pytest.fixture(scope="function")
-def auth_token(client):
-    # Регистрируем пользователя
-    client.post(
-        "/auth/register",
-        json={"email": "testuser@example.com", "password": "TestPassword123!"}
-    )
-    # Авторизуемся и получаем токен
-    response = client.post(
-        "/auth/login",
-        json={"email": "testuser@example.com", "password": "TestPassword123!"}
-    )
-    token = response.json().get("access_token")
-    return token
+@pytest_asyncio.fixture
+async def auth_token(client):
+    user_data = {"email": "testuser@example.com", "password": "StrongPassword123"}
+    await client.post("/auth/register", json=user_data)
+    response = await client.post("/auth/login", json=user_data)
+    return response.json()["access_token"]
 
-@pytest.fixture(scope="function")
-def second_auth_token(client):
-    client.post(
-        "/auth/register",
-        json={"email": "second@example.com", "password": "TestPassword123!"}
-    )
-    response = client.post(
-        "/auth/login",
-        json={"email": "second@example.com", "password": "TestPassword123!"}
-    )
-    return response.json().get("access_token")
+@pytest_asyncio.fixture
+async def second_auth_token(client):
+    user_data = {"email": "seconduser@example.com", "password": "StrongPassword123"}
+    await client.post("/auth/register", json=user_data)
+    response = await client.post("/auth/login", json=user_data)
+    return response.json()["access_token"]

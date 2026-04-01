@@ -13,20 +13,20 @@ class CommentService:
         self.comment_repo = comment_repo
         self.task_repo = task_repo
 
-    def create_comment(self, task_id: int, user_id: int, comment_in: CommentCreateSchema):
-        task = self.task_repo.get_by_id(task_id, user_id)
+    async def create_comment(self, task_id: int, user_id: int, comment_in: CommentCreateSchema):
+        task = await self.task_repo.get_by_id(task_id, user_id)
         if not task:
             raise TaskNotFoundException(task_id=task_id)
-        return self.comment_repo.create(comment_in, task_id=task_id)
+        return await self.comment_repo.create(comment_in, task_id=task_id)
 
-    def get_task_comments(self, task_id: int, user_id: int):
-        task = self.task_repo.get_by_id(task_id, user_id)
+    async def get_task_comments(self, task_id: int, user_id: int):
+        task = await self.task_repo.get_by_id(task_id, user_id)
         if not task:
             raise TaskNotFoundException(task_id=task_id)
-        return self.comment_repo.get_by_task_id(task_id)
+        return await self.comment_repo.get_by_task_id(task_id)
 
-    def get_comment(self, comment_id: int):
-        comment = self.comment_repo.get_by_id(comment_id)
+    async def get_comment(self, comment_id: int):
+        comment = await self.comment_repo.get_by_id(comment_id)
         if not comment:
             raise CommentNotFoundException(comment_id=comment_id)
         return comment
